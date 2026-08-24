@@ -7,10 +7,11 @@ export type IssuePriority = 'Lowest' | 'Low' | 'Medium' | 'High' | 'Highest';
 export type IssueType = 'Story' | 'Task' | 'Bug' | 'Epic';
 export interface UserSummary { id:number; name:string; avatar:string; }
 export interface Comment { id:number; body:string; author:string; avatar:string; createdAt:string; }
-export interface Issue { id:number; key:string; title:string; description:string; status:IssueStatus; priority:IssuePriority; type:IssueType; assignee?:UserSummary; updatedAt:string; }
-export interface IssueDetails extends Issue { comments: Comment[]; }
+export interface Activity { id:number; type:string; oldValue?:string; newValue?:string; actor:string; createdAt:string; }
+export interface Issue { id:number; key:string; title:string; description:string; status:IssueStatus; priority:IssuePriority; type:IssueType; storyPoints:number; assignee?:UserSummary; updatedAt:string; }
+export interface IssueDetails extends Issue { comments: Comment[]; activities: Activity[]; }
 export interface Project { id:number; key:string; name:string; description:string; issueCount:number; }
-export interface CreateIssueRequest { title:string; description:string; status:IssueStatus; priority:IssuePriority; type:IssueType; assigneeId?:number; }
+export interface CreateIssueRequest { projectId:number; title:string; description:string; status:IssueStatus; priority:IssuePriority; type:IssueType; storyPoints:number; assigneeId?:number; sprintId?:number; }
 
 @Injectable({ providedIn: 'root' })
 export class JiraApiService {
