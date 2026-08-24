@@ -23,6 +23,7 @@ public sealed class JiraDbContext(DbContextOptions<JiraDbContext> options) : DbC
         modelBuilder.Entity<Issue>().Property(x => x.Type).HasConversion<string>();
         modelBuilder.Entity<Sprint>().Property(x => x.Status).HasConversion<string>();
         modelBuilder.Entity<IssueActivity>().Property(x => x.Type).HasConversion<string>();
+        modelBuilder.Entity<User>().Property(x => x.Role).HasMaxLength(32).IsRequired();
 
         modelBuilder.Entity<IssueNumberSequence>().HasKey(x => x.ProjectId);
         modelBuilder.Entity<IssueNumberSequence>().Property(x => x.NextNumber).IsRequired();
