@@ -1,0 +1,16 @@
+<div class="p-4 lg:p-8 max-w-[1600px] mx-auto">
+  <div class="mb-8"><div class="text-sm breadcrumbs"><ul><li>Project</li><li>Dashboard</li></ul></div><h1 class="text-3xl font-bold mt-2">Project dashboard</h1><p class="text-base-content/60">A delivery snapshot for the current Agile workspace.</p></div>
+  <div *ngIf="loading()" class="flex justify-center p-16"><span class="loading loading-spinner loading-lg"></span></div>
+  <ng-container *ngIf="!loading()">
+    <div class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4 mb-6">
+      <div class="stat bg-base-100 rounded-box shadow-sm"><div class="stat-title">Total issues</div><div class="stat-value">{{ issues().length }}</div><div class="stat-desc">Across current project</div></div>
+      <div class="stat bg-base-100 rounded-box shadow-sm"><div class="stat-title">Completed</div><div class="stat-value text-success">{{ count('Done') }}</div><div class="stat-desc">{{ percent('Done') }}% of issues</div></div>
+      <div class="stat bg-base-100 rounded-box shadow-sm"><div class="stat-title">In progress</div><div class="stat-value text-warning">{{ count('InProgress') }}</div><div class="stat-desc">Active development</div></div>
+      <div class="stat bg-base-100 rounded-box shadow-sm"><div class="stat-title">Backlog</div><div class="stat-value">{{ count('Backlog') }}</div><div class="stat-desc">Awaiting prioritization</div></div>
+    </div>
+    <div class="grid grid-cols-1 xl:grid-cols-3 gap-6">
+      <section class="card bg-base-100 shadow-sm xl:col-span-2"><div class="card-body"><h2 class="card-title">Workflow distribution</h2><div class="space-y-5 mt-3"><div *ngFor="let status of statuses"><div class="flex justify-between text-sm mb-1"><span>{{ status }}</span><span class="font-semibold">{{ count(status) }} · {{ percent(status) }}%</span></div><progress class="progress progress-primary w-full" [value]="percent(status)" max="100"></progress></div></div></div></section>
+      <section class="card bg-base-100 shadow-sm"><div class="card-body"><h2 class="card-title">Recently updated</h2><div class="divide-y divide-base-300"><a *ngFor="let issue of issues().slice(0,5)" class="py-3 block hover:text-primary" [routerLink]="['/issues', issue.id]"><div class="font-mono text-xs text-base-content/50">{{ issue.key }}</div><div class="font-medium">{{ issue.title }}</div></a><div *ngIf="issues().length===0" class="text-sm text-base-content/50 py-4">No issues yet.</div></div></div></section>
+    </div>
+  </ng-container>
+</div>
