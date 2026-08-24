@@ -1,0 +1,11 @@
+- [x] Standalone editor component
+- [x] Editor page
+- [x] /issues/:id/edit route
+- [x] Typed API update contract
+- [x] Assignee selector
+- [x] Story points
+- [x] Priority and type
+- [x] Save/cancel behavior
+- [x] Component tests
+- [x] Architecture documentation
+- [ ] Integrate edit action into existing issue-detail view
