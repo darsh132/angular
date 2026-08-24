@@ -10,7 +10,8 @@ export const routes: Routes = [
     { path: 'board', loadComponent: () => import('./features/board/board.component').then(m => m.BoardComponent) },
     { path: 'backlog', loadComponent: () => import('./features/backlog/backlog.component').then(m => m.BacklogComponent) },
     { path: 'sprints', loadComponent: () => import('./features/sprints/sprints.component').then(m => m.SprintsComponent) },
-    { path: 'issues/:id', loadComponent: () => import('./features/issue-detail/issue-detail.component').then(m => m.IssueDetailComponent) }
+    { path: 'issues/:id', loadComponent: () => import('./features/issue-detail/issue-detail.component').then(m => m.IssueDetailComponent) },
+    { path: 'issues/:id/edit', loadComponent: () => import('./features/issue-editor/issue-editor-page.component').then(m => m.IssueEditorPageComponent) }
   ]},
   { path: '**', redirectTo: '' }
 ];
