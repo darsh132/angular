@@ -11,6 +11,7 @@ public sealed class JiraDbContext(DbContextOptions<JiraDbContext> options) : DbC
     public DbSet<Issue> Issues => Set<Issue>();
     public DbSet<IssueComment> IssueComments => Set<IssueComment>();
     public DbSet<IssueActivity> IssueActivities => Set<IssueActivity>();
+    public DbSet<IssueNumberSequence> IssueNumberSequences => Set<IssueNumberSequence>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -22,6 +23,10 @@ public sealed class JiraDbContext(DbContextOptions<JiraDbContext> options) : DbC
         modelBuilder.Entity<Issue>().Property(x => x.Type).HasConversion<string>();
         modelBuilder.Entity<Sprint>().Property(x => x.Status).HasConversion<string>();
         modelBuilder.Entity<IssueActivity>().Property(x => x.Type).HasConversion<string>();
+
+        modelBuilder.Entity<IssueNumberSequence>().HasKey(x => x.ProjectId);
+        modelBuilder.Entity<IssueNumberSequence>().Property(x => x.NextNumber).IsRequired();
+        modelBuilder.Entity<IssueNumberSequence>().HasOne<Project>().WithMany().HasForeignKey(x => x.ProjectId).OnDelete(DeleteBehavior.Cascade);
 
         modelBuilder.Entity<Issue>().HasOne(x => x.Project).WithMany(x => x.Issues).HasForeignKey(x => x.ProjectId).OnDelete(DeleteBehavior.Cascade);
         modelBuilder.Entity<Sprint>().HasOne(x => x.Project).WithMany(x => x.Sprints).HasForeignKey(x => x.ProjectId).OnDelete(DeleteBehavior.Cascade);
