@@ -1,8 +1,9 @@
 import { Component, OnInit, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
+import { RouterLink } from '@angular/router';
 import { JiraApiService, Issue, IssueStatus } from '../../core/jira-api.service';
 
-@Component({ selector: 'app-dashboard', standalone: true, imports: [CommonModule], templateUrl: './dashboard.component.html' })
+@Component({ selector: 'app-dashboard', standalone: true, imports: [CommonModule, RouterLink], templateUrl: './dashboard.component.html' })
 export class DashboardComponent implements OnInit {
   private readonly api = inject(JiraApiService);
   readonly issues = signal<Issue[]>([]);
