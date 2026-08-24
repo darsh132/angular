@@ -9,16 +9,15 @@ on:
 jobs:
   backend:
     runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: backend/JiraClone.Api
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-dotnet@v4
         with:
           dotnet-version: '8.0.x'
-      - run: dotnet restore
-      - run: dotnet build --no-restore --configuration Release
+      - run: dotnet restore backend/JiraClone.Api/JiraClone.Api.csproj
+      - run: dotnet build backend/JiraClone.Api/JiraClone.Api.csproj --no-restore --configuration Release
+      - run: dotnet restore backend/JiraClone.Api.Tests/JiraClone.Api.Tests.csproj
+      - run: dotnet test backend/JiraClone.Api.Tests/JiraClone.Api.Tests.csproj --no-restore --configuration Release
 
   frontend:
     runs-on: ubuntu-latest
