@@ -1,3 +1,4 @@
+using System.Security.Claims;
 using JiraClone.Api.Data;
 using JiraClone.Api.Models;
 using JiraClone.Api.Services;
@@ -42,9 +43,12 @@ public sealed class IssuesController(JiraDbContext db, IssueApplicationService s
     {
         if (string.IsNullOrWhiteSpace(request.Body)) return BadRequest(new { message = "Comment body is required." });
         if (!await db.Issues.AnyAsync(x => x.Id == id, ct)) return NotFound();
-        var author = await db.Users.OrderBy(x => x.Id).FirstOrDefaultAsync(ct); if (author is null) return BadRequest(new { message = "No user exists." });
-        var now = DateTime.UtcNow; var comment = new IssueComment { IssueId = id, AuthorId = author.Id, Body = request.Body.Trim(), CreatedAt = now };
-        db.IssueComments.Add(comment); db.IssueActivities.Add(new IssueActivity { IssueId = id, ActorId = author.Id, Type = IssueActivityType.CommentAdded, NewValue = "Comment added", CreatedAt = now }); await db.SaveChangesAsync(ct);
+        if (!int.TryParse(User.FindFirstValue(ClaimTypes.NameIdentifier), out var authorId) || !await db.Users.AnyAsync(x => x.Id == authorId, ct)) return Unauthorized();
+        var now = DateTime.UtcNow;
+        var comment = new IssueComment { IssueId = id, AuthorId = authorId, Body = request.Body.Trim(), CreatedAt = now };
+        db.IssueComments.Add(comment);
+        db.IssueActivities.Add(new IssueActivity { IssueId = id, ActorId = authorId, Type = IssueActivityType.CommentAdded, NewValue = "Comment added", CreatedAt = now });
+        await db.SaveChangesAsync(ct);
         return Created($"/api/issues/{id}", comment.Id);
     }
 }
