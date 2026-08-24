@@ -2,7 +2,7 @@ import { Injectable, computed, inject, signal } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { tap } from 'rxjs/operators';
 
-export interface AuthUser { id: number; name: string; email: string; avatar: string; }
+export interface AuthUser { id: number; name: string; email: string; avatar: string; role: string; }
 export interface LoginResponse { token: string; user: AuthUser; }
 
 @Injectable({ providedIn: 'root' })
