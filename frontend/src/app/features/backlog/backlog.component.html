@@ -1,1 +1,26 @@
-<div class="p-4 lg:p-8 max-w-6xl mx-auto"><div class="mb-7"><div class="breadcrumbs text-sm"><ul><li>Project</li><li>Backlog</li></ul></div><h1 class="text-3xl font-bold mt-2">Backlog</h1><p class="text-base-content/60">Prioritize upcoming work before moving it into an active sprint.</p></div><div class="card bg-base-100 shadow-sm"><div class="card-body p-0"><div class="p-5 border-b border-base-300 flex justify-between"><h2 class="font-semibold">Product backlog</h2><span class="badge badge-outline">{{ issues().length }} items</span></div><div *ngFor="let issue of issues(); let i = index" class="flex items-center gap-4 p-4 border-b border-base-300 hover:bg-base-200"><span class="text-sm w-8 text-base-content/40">{{ i + 1 }}</span><div class="flex-1 min-w-0"><a [routerLink]="['/issues', issue.id]" class="font-medium link link-hover">{{ issue.title }}</a><div class="text-xs font-mono text-base-content/50">{{ issue.key }} · {{ issue.type }}</div></div><span class="badge badge-sm">{{ issue.priority }}</span><span class="badge badge-outline badge-sm">{{ issue.status }}</span></div><div *ngIf="issues().length===0" class="p-12 text-center text-base-content/50">The backlog is empty.</div></div></div></div>
+<div class="p-4 lg:p-8 max-w-7xl mx-auto" cdkDropListGroup>
+  <div class="mb-7 flex flex-col md:flex-row md:items-end md:justify-between gap-3">
+    <div><div class="breadcrumbs text-sm"><ul><li>Project</li><li>Backlog</li></ul></div><h1 class="text-3xl font-bold mt-2">Backlog</h1><p class="text-base-content/60">Prioritize upcoming work and drag issues into a sprint.</p></div>
+    <select class="select select-bordered bg-base-100" [(ngModel)]="projectId" (change)="load()"><option *ngFor="let project of projects()" [ngValue]="project.id">{{ project.key }} — {{ project.name }}</option></select>
+  </div>
+  <div *ngIf="loading()" class="flex justify-center p-16"><span class="loading loading-spinner loading-lg"></span></div>
+  <div *ngIf="!loading()" class="grid grid-cols-1 xl:grid-cols-[1fr_1.5fr] gap-5">
+    <section class="card bg-base-100 shadow-sm">
+      <div class="card-body p-0"><div class="p-5 border-b border-base-300 flex justify-between"><h2 class="font-semibold">Product backlog</h2><span class="badge badge-outline">{{ backlogIssues().length }} items</span></div>
+        <div cdkDropList [cdkDropListData]="backlogIssues()" (cdkDropListDropped)="drop($event)" class="min-h-80 p-3 space-y-2">
+          <article *ngFor="let issue of backlogIssues(); let i = index" cdkDrag class="card bg-base-200 hover:bg-base-300 cursor-grab"><div class="card-body p-3"><div class="flex gap-3 items-start"><span class="text-xs text-base-content/40 w-5">{{ i + 1 }}</span><div class="flex-1 min-w-0"><a [routerLink]="['/issues', issue.id]" class="font-medium link link-hover">{{ issue.title }}</a><div class="text-xs font-mono text-base-content/50 mt-1">{{ issue.key }} · {{ issue.type }} · {{ issue.storyPoints }} pts</div></div><span class="badge badge-sm">{{ issue.priority }}</span></div></div></article>
+          <div *ngIf="backlogIssues().length===0" class="p-12 text-center text-base-content/40 border-2 border-dashed border-base-content/10 rounded-box">No unscheduled backlog items.</div>
+        </div>
+      </div>
+    </section>
+    <section class="space-y-4">
+      <article *ngFor="let sprint of sprints()" class="card bg-base-100 shadow-sm"><div class="card-body p-0"><div class="p-5 border-b border-base-300 flex items-center justify-between"><div><div class="flex items-center gap-2"><h2 class="font-bold">{{ sprint.name }}</h2><span class="badge badge-sm" [class.badge-success]="sprint.status==='Active'">{{ sprint.status }}</span></div><p class="text-sm text-base-content/60 mt-1">{{ sprint.goal || 'No sprint goal defined.' }}</p></div><span class="text-sm font-semibold">{{ sprintIssues(sprint.id).length }} issues</span></div>
+        <div cdkDropList [cdkDropListData]="sprintIssues(sprint.id)" (cdkDropListDropped)="drop($event, sprint.id)" class="min-h-44 p-3 space-y-2 bg-base-200/40">
+          <article *ngFor="let issue of sprintIssues(sprint.id)" cdkDrag class="card bg-base-100 shadow-sm cursor-grab"><div class="card-body p-3"><div class="flex justify-between gap-3"><div><a [routerLink]="['/issues', issue.id]" class="font-medium link link-hover">{{ issue.key }} · {{ issue.title }}</a><div class="text-xs text-base-content/50 mt-1">{{ issue.status }} · {{ issue.storyPoints }} pts</div></div><span class="badge badge-sm">{{ issue.priority }}</span></div></div></article>
+          <div *ngIf="sprintIssues(sprint.id).length===0" class="p-8 text-center text-sm text-base-content/40">Drop backlog issues here</div>
+        </div>
+      </div></article>
+      <div *ngIf="sprints().length===0" class="alert alert-info">Create a sprint first, then drag backlog items into it.</div>
+    </section>
+  </div>
+</div>
