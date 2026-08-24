@@ -1,0 +1,1 @@
+Review target: feature/issue-editor -> main. Please review standalone editor, route, API contract, and tests. Existing issue-detail integration remains a follow-up because the GitHub contents API rejected safe updates to that existing path.
