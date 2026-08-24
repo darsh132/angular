@@ -14,13 +14,13 @@ export class BoardComponent implements OnInit {
   readonly loading = signal(true);
   readonly createOpen = signal(false);
   readonly saving = signal(false);
-  newIssue = { title: '', description: '', status: 'Todo' as IssueStatus, priority: 'Medium' as IssuePriority, type: 'Task' as IssueType };
+  newIssue = { projectId: 1, title: '', description: '', status: 'Todo' as IssueStatus, priority: 'Medium' as IssuePriority, type: 'Task' as IssueType, storyPoints: 0 };
 
   ngOnInit(): void { this.load(); }
   load(): void { this.loading.set(true); this.api.issues(this.search()).subscribe({ next: x => this.issues.set(x), error: e => console.error(e), complete: () => this.loading.set(false) }); }
   byStatus(status: IssueStatus): Issue[] { return this.issues().filter(i => i.status === status); }
   move(issue: Issue, status: IssueStatus): void { if (issue.status === status) return; this.api.move(issue.id, status).subscribe(() => this.load()); }
-  openCreate(): void { this.newIssue = { title: '', description: '', status: 'Todo', priority: 'Medium', type: 'Task' }; this.createOpen.set(true); }
+  openCreate(): void { this.newIssue = { projectId: 1, title: '', description: '', status: 'Todo', priority: 'Medium', type: 'Task', storyPoints: 0 }; this.createOpen.set(true); }
   closeCreate(): void { if (!this.saving()) this.createOpen.set(false); }
   createIssue(): void {
     if (!this.newIssue.title.trim()) return;
