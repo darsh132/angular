@@ -12,6 +12,7 @@ var jwtKey = builder.Configuration["Jwt:Key"] ?? throw new InvalidOperationExcep
 if (jwtKey.Length < 32) throw new InvalidOperationException("Jwt:Key must contain at least 32 characters.");
 
 builder.Services.AddDbContext<JiraDbContext>(o => o.UseSqlite(builder.Configuration.GetConnectionString("DefaultConnection") ?? "Data Source=jira.db"));
+builder.Services.AddHttpContextAccessor();
 builder.Services.AddScoped<IssueApplicationService>();
 builder.Services.AddScoped<SprintApplicationService>();
 builder.Services.AddScoped<AuthService>();
