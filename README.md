@@ -1,52 +1,60 @@
 # Jira Clone — Angular + .NET 8
 
-A production-oriented Jira-style issue tracking application built with Angular and ASP.NET Core .NET 8.
+A portfolio-grade Jira-style Agile issue tracker built as a full-stack vertical slice with Angular 22, ASP.NET Core .NET 8, EF Core 8 and SQLite 3.
 
 ## Stack
-
-- Angular
+- Angular 22 standalone components + TypeScript
+- Tailwind CSS 4 + daisyUI 5
 - ASP.NET Core .NET 8 Web API
-- Entity Framework Core
-- SQLite by default for local development
-- JWT authentication
-- REST API
-- Board / backlog / issue workflow
+- Entity Framework Core 8
+- SQLite 3
+- REST/OpenAPI
+- xUnit test strategy
 
-## Planned modules
-
-- Authentication and user profiles
-- Projects
-- Scrum/Kanban boards
-- Backlog and sprint management
-- Issues with status, priority, type and assignee
-- Issue details, comments and activity
-- Search and filters
-- Dashboard metrics
-- Responsive Jira-style UI
+## Current features
+- Responsive Scrum board
+- Backlog/Todo/In Progress/In Review/Done workflow
+- Server-side search and status filtering
+- Issue creation API
+- Issue status transitions persisted to SQLite
+- Seeded development data
+- daisyUI Corporate, Night and Forest themes
+- Swagger in development
+- Functional, technical and Agile documentation
 
 ## Repository layout
-
 ```text
-frontend/   Angular application
-backend/    ASP.NET Core .NET 8 Web API
+frontend/                       Angular SPA
+  src/app/core                  API/infrastructure services
+  src/app/features/board        Scrum board feature
+backend/JiraClone.Api/          ASP.NET Core API
+docs/                           Functional, technical and Agile docs
 ```
 
-## Local development
+## Run locally
 
 ### Backend
-
 ```bash
-cd backend
- dotnet restore
- dotnet run
+cd backend/JiraClone.Api
+dotnet restore
+dotnet run
 ```
 
 ### Frontend
-
 ```bash
 cd frontend
 npm install
 npm start
 ```
 
-The frontend is configured to call the local API at `https://localhost:7001/api`.
+Open `http://localhost:4200`.
+
+The Angular API service currently targets `https://localhost:7001/api`; keep the API launch profile aligned with that URL.
+
+## Documentation
+- [Functional Documentation](docs/FUNCTIONAL-DOCUMENTATION.md)
+- [Technical Documentation](docs/TECHNICAL-DOCUMENTATION.md)
+- [Agile Backlog](docs/AGILE-BACKLOG.md)
+
+## Engineering standards
+The project follows SOLID/OOP boundaries, dependency injection, typed API contracts, async I/O, feature-oriented Angular structure, semantic UI components, small reviewable changes, and a Definition of Done. Production hardening items are explicitly documented rather than presenting demo authentication as secure.
