@@ -11,10 +11,7 @@ builder.Services.AddScoped<SprintApplicationService>();
 builder.Services.AddCors(o => o.AddPolicy("frontend", p => p.WithOrigins("http://localhost:4200", "https://localhost:4200").AllowAnyHeader().AllowAnyMethod()));
 builder.Services.AddProblemDetails(options =>
 {
-    options.CustomizeProblemDetails = context =>
-    {
-        context.ProblemDetails.Extensions["traceId"] = context.HttpContext.TraceIdentifier;
-    };
+    options.CustomizeProblemDetails = context => context.ProblemDetails.Extensions["traceId"] = context.HttpContext.TraceIdentifier;
 });
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
@@ -29,22 +26,17 @@ app.UseExceptionHandler(errorApp => errorApp.Run(async context =>
         KeyNotFoundException => (StatusCodes.Status404NotFound, "Resource not found"),
         ArgumentException => (StatusCodes.Status400BadRequest, "Invalid request"),
         InvalidOperationException => (StatusCodes.Status409Conflict, "Operation not allowed"),
+        DbUpdateException => (StatusCodes.Status409Conflict, "Database constraint violation"),
         _ => (StatusCodes.Status500InternalServerError, "Unexpected server error")
     };
-
     context.Response.StatusCode = status;
-    await Results.Problem(
-        statusCode: status,
-        title: title,
-        detail: app.Environment.IsDevelopment() ? exception?.Message : null,
-        extensions: new Dictionary<string, object?> { ["traceId"] = context.TraceIdentifier })
-        .ExecuteAsync(context);
+    await Results.Problem(statusCode: status, title: title, detail: app.Environment.IsDevelopment() ? exception?.Message : null, extensions: new Dictionary<string, object?> { ["traceId"] = context.TraceIdentifier }).ExecuteAsync(context);
 }));
 
 using (var scope = app.Services.CreateScope())
 {
     var db = scope.ServiceProvider.GetRequiredService<JiraDbContext>();
-    db.Database.EnsureCreated();
+    await db.Database.MigrateAsync();
     await SeedData.InitializeAsync(db);
 }
 if (app.Environment.IsDevelopment()) { app.UseSwagger(); app.UseSwaggerUI(); }
