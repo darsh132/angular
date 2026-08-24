@@ -1,12 +1,20 @@
 using JiraClone.Api.Data;
 using JiraClone.Api.Domain;
 using JiraClone.Api.Models;
+using Microsoft.AspNetCore.Http;
 using Microsoft.EntityFrameworkCore;
 
 namespace JiraClone.Api.Services;
 
-public sealed class IssueApplicationService(JiraDbContext db)
+public sealed class IssueApplicationService(JiraDbContext db, IHttpContextAccessor? httpContextAccessor = null)
 {
+    private async Task<User?> ActorAsync(CancellationToken ct)
+    {
+        var value = httpContextAccessor?.HttpContext?.User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
+        if (int.TryParse(value, out var id)) return await db.Users.FirstOrDefaultAsync(x => x.Id == id, ct);
+        return await db.Users.OrderBy(x => x.Id).FirstOrDefaultAsync(ct); // test/dev fallback when no HTTP context exists
+    }
+
     public async Task<Issue> CreateAsync(CreateIssueCommand command, CancellationToken ct)
     {
         if (string.IsNullOrWhiteSpace(command.Title)) throw new ArgumentException("Issue title is required.", nameof(command));
@@ -19,17 +27,15 @@ public sealed class IssueApplicationService(JiraDbContext db)
             if (sprint.ProjectId != project.Id) throw new InvalidOperationException("Issue and sprint must belong to the same project.");
             if (sprint.Status == SprintStatus.Completed) throw new InvalidOperationException("A completed sprint cannot receive issues.");
         }
-
         await using var transaction = await db.Database.BeginTransactionAsync(ct);
         await db.Database.ExecuteSqlInterpolatedAsync($"INSERT OR IGNORE INTO IssueNumberSequences (ProjectId, NextNumber) SELECT {project.Id}, COALESCE(MAX(Number), 0) + 1 FROM Issues WHERE ProjectId = {project.Id};", ct);
         var sequence = await db.IssueNumberSequences.SingleAsync(x => x.ProjectId == project.Id, ct);
         var number = sequence.NextNumber;
         sequence.NextNumber++;
-
         var now = DateTime.UtcNow;
         var issue = new Issue { ProjectId = project.Id, Number = number, Title = command.Title.Trim(), Description = command.Description?.Trim() ?? string.Empty, Status = command.Status, Priority = command.Priority, Type = command.Type, StoryPoints = command.StoryPoints, AssigneeId = command.AssigneeId, SprintId = command.SprintId, CreatedAt = now, UpdatedAt = now };
         db.Issues.Add(issue);
-        var actor = await db.Users.OrderBy(x => x.Id).FirstOrDefaultAsync(ct);
+        var actor = await ActorAsync(ct);
         if (actor is not null) db.IssueActivities.Add(new IssueActivity { Issue = issue, ActorId = actor.Id, Type = IssueActivityType.Created, NewValue = issue.Status.ToString(), CreatedAt = now });
         await db.SaveChangesAsync(ct);
         await transaction.CommitAsync(ct);
@@ -50,7 +56,7 @@ public sealed class IssueApplicationService(JiraDbContext db)
         }
         var now = DateTime.UtcNow; var oldPriority = issue.Priority; var oldAssignee = issue.AssigneeId;
         issue.Title = command.Title.Trim(); issue.Description = command.Description?.Trim() ?? string.Empty; issue.Priority = command.Priority; issue.Type = command.Type; issue.StoryPoints = command.StoryPoints; issue.AssigneeId = command.AssigneeId; issue.SprintId = command.SprintId; issue.UpdatedAt = now;
-        var actor = await db.Users.OrderBy(x => x.Id).FirstOrDefaultAsync(ct);
+        var actor = await ActorAsync(ct);
         if (actor is not null)
         {
             if (oldPriority != issue.Priority) db.IssueActivities.Add(new IssueActivity { IssueId = id, ActorId = actor.Id, Type = IssueActivityType.PriorityChanged, OldValue = oldPriority.ToString(), NewValue = issue.Priority.ToString(), CreatedAt = now });
@@ -65,7 +71,7 @@ public sealed class IssueApplicationService(JiraDbContext db)
         var issue = await db.Issues.FirstOrDefaultAsync(x => x.Id == id, ct) ?? throw new KeyNotFoundException("Issue not found.");
         IssueWorkflow.EnsureCanTransition(issue.Status, target);
         var old = issue.Status; issue.Status = target; issue.UpdatedAt = DateTime.UtcNow;
-        var actor = await db.Users.OrderBy(x => x.Id).FirstOrDefaultAsync(ct);
+        var actor = await ActorAsync(ct);
         if (actor is not null) db.IssueActivities.Add(new IssueActivity { IssueId = issue.Id, ActorId = actor.Id, Type = IssueActivityType.StatusChanged, OldValue = old.ToString(), NewValue = target.ToString(), CreatedAt = issue.UpdatedAt });
         await db.SaveChangesAsync(ct);
     }
