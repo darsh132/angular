@@ -19,13 +19,20 @@ public sealed class IssueApplicationService(JiraDbContext db)
             if (sprint.ProjectId != project.Id) throw new InvalidOperationException("Issue and sprint must belong to the same project.");
             if (sprint.Status == SprintStatus.Completed) throw new InvalidOperationException("A completed sprint cannot receive issues.");
         }
-        var number = (await db.Issues.Where(x => x.ProjectId == project.Id).MaxAsync(x => (int?)x.Number, ct) ?? 0) + 1;
+
+        await using var transaction = await db.Database.BeginTransactionAsync(ct);
+        await db.Database.ExecuteSqlInterpolatedAsync($"INSERT OR IGNORE INTO IssueNumberSequences (ProjectId, NextNumber) SELECT {project.Id}, COALESCE(MAX(Number), 0) + 1 FROM Issues WHERE ProjectId = {project.Id};", ct);
+        var sequence = await db.IssueNumberSequences.SingleAsync(x => x.ProjectId == project.Id, ct);
+        var number = sequence.NextNumber;
+        sequence.NextNumber++;
+
         var now = DateTime.UtcNow;
         var issue = new Issue { ProjectId = project.Id, Number = number, Title = command.Title.Trim(), Description = command.Description?.Trim() ?? string.Empty, Status = command.Status, Priority = command.Priority, Type = command.Type, StoryPoints = command.StoryPoints, AssigneeId = command.AssigneeId, SprintId = command.SprintId, CreatedAt = now, UpdatedAt = now };
         db.Issues.Add(issue);
         var actor = await db.Users.OrderBy(x => x.Id).FirstOrDefaultAsync(ct);
         if (actor is not null) db.IssueActivities.Add(new IssueActivity { Issue = issue, ActorId = actor.Id, Type = IssueActivityType.Created, NewValue = issue.Status.ToString(), CreatedAt = now });
         await db.SaveChangesAsync(ct);
+        await transaction.CommitAsync(ct);
         return issue;
     }
 
@@ -41,12 +48,8 @@ public sealed class IssueApplicationService(JiraDbContext db)
             if (sprint.ProjectId != issue.ProjectId) throw new InvalidOperationException("Issue and sprint must belong to the same project.");
             if (sprint.Status == SprintStatus.Completed) throw new InvalidOperationException("A completed sprint cannot receive issues.");
         }
-        var now = DateTime.UtcNow;
-        var oldPriority = issue.Priority;
-        var oldAssignee = issue.AssigneeId;
-        issue.Title = command.Title.Trim(); issue.Description = command.Description?.Trim() ?? string.Empty;
-        issue.Priority = command.Priority; issue.Type = command.Type; issue.StoryPoints = command.StoryPoints;
-        issue.AssigneeId = command.AssigneeId; issue.SprintId = command.SprintId; issue.UpdatedAt = now;
+        var now = DateTime.UtcNow; var oldPriority = issue.Priority; var oldAssignee = issue.AssigneeId;
+        issue.Title = command.Title.Trim(); issue.Description = command.Description?.Trim() ?? string.Empty; issue.Priority = command.Priority; issue.Type = command.Type; issue.StoryPoints = command.StoryPoints; issue.AssigneeId = command.AssigneeId; issue.SprintId = command.SprintId; issue.UpdatedAt = now;
         var actor = await db.Users.OrderBy(x => x.Id).FirstOrDefaultAsync(ct);
         if (actor is not null)
         {
