@@ -42,11 +42,12 @@ export class SprintsComponent implements OnInit {
   assign(issue: Issue, sprint: Sprint): void { this.api.assignIssueToSprint(this.projectId, sprint.id, issue.id).subscribe(() => this.load()); }
   remove(issue: Issue): void { this.api.removeIssueFromSprint(this.projectId, issue.id).subscribe(() => this.load()); }
 
-  sprintIssues(sprintId:number): Issue[] { return this.issues().filter(i => i.sprintId === sprintId); }
-  points(items:Issue[]): number { return items.reduce((sum, item) => sum + item.storyPoints, 0); }
-  done(items:Issue[]): number { return items.filter(i => i.status === 'Done').length; }
-  progress(items:Issue[]): number { return Math.round(this.done(items) * 100 / (items.length || 1)); }
-  statusLabel(status:SprintStatus): string { return status === 'InProgress' ? 'In Progress' : status; }
+  sprintIssues(sprintId: number): Issue[] { return this.issues().filter(i => i.sprintId === sprintId); }
+  committedPoints(items: Issue[]): number { return items.reduce((sum, item) => sum + Math.max(0, item.storyPoints), 0); }
+  completedPoints(items: Issue[]): number { return items.filter(i => i.status === 'Done').reduce((sum, item) => sum + Math.max(0, item.storyPoints), 0); }
+  remainingPoints(items: Issue[]): number { return Math.max(0, this.committedPoints(items) - this.completedPoints(items)); }
+  progress(items: Issue[]): number { const committed = this.committedPoints(items); return committed ? Math.min(100, Math.round(this.completedPoints(items) * 100 / committed)) : 0; }
+  statusLabel(status: SprintStatus): string { return status === 'Active' ? 'Active' : status; }
 
   private reset(): void { this.showCreate = false; this.name = ''; this.goal = ''; this.startDate = ''; this.endDate = ''; }
 }
