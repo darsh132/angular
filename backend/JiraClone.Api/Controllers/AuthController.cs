@@ -1,29 +1,33 @@
-using JiraClone.Api.Data;
+using JiraClone.Api.Services;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
 
 namespace JiraClone.Api.Controllers;
 
 [ApiController, Route("api/[controller]")]
-public sealed class AuthController(JiraDbContext db) : ControllerBase
+public sealed class AuthController(AuthService auth) : ControllerBase
 {
+    [AllowAnonymous]
     [HttpPost("login")]
     public async Task<ActionResult<LoginResponse>> Login(LoginRequest request, CancellationToken ct)
     {
         if (string.IsNullOrWhiteSpace(request.Email) || string.IsNullOrWhiteSpace(request.Password))
             return BadRequest(new { message = "Email and password are required." });
-
-        var user = await db.Users.AsNoTracking().FirstOrDefaultAsync(x => x.Email == request.Email, ct);
-        if (user is null)
-            return Unauthorized(new { message = "Invalid credentials." });
-
-        // Development-only authentication. Replace with ASP.NET Core Identity/JWT before production.
-        return user.PasswordHash == request.Password
-            ? Ok(new LoginResponse("development-token", new UserResponse(user.Id, user.Name, user.Email, user.Avatar)))
-            : Unauthorized(new { message = "Invalid credentials." });
+        var result = await auth.AuthenticateAsync(request.Email, request.Password, ct);
+        return result is null
+            ? Unauthorized(new { message = "Invalid credentials." })
+            : Ok(new LoginResponse(result.Token, result.User));
     }
+
+    [Authorize]
+    [HttpGet("me")]
+    public ActionResult<AuthUser> Me() => Ok(new AuthUser(
+        int.Parse(User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)!.Value),
+        User.Identity?.Name ?? "",
+        User.FindFirst(System.Security.Claims.ClaimTypes.Email)?.Value ?? "",
+        "",
+        User.FindFirst(System.Security.Claims.ClaimTypes.Role)?.Value ?? "User"));
 }
 
 public sealed record LoginRequest(string Email, string Password);
-public sealed record LoginResponse(string Token, UserResponse User);
-public sealed record UserResponse(int Id, string Name, string Email, string Avatar);
+public sealed record LoginResponse(string Token, AuthUser User);
