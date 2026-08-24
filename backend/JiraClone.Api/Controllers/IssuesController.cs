@@ -15,7 +15,7 @@ public sealed class IssuesController(JiraDbContext db, IssueApplicationService s
         var query = db.Issues.AsNoTracking().Include(x => x.Assignee).Include(x => x.Project).AsQueryable();
         if (Enum.TryParse<IssueStatus>(status, true, out var parsedStatus)) query = query.Where(x => x.Status == parsedStatus);
         if (!string.IsNullOrWhiteSpace(search)) query = query.Where(x => x.Title.Contains(search) || x.Description.Contains(search) || (x.Project.Key + "-" + x.Number).Contains(search));
-        return Ok(await query.OrderByDescending(x => x.UpdatedAt).Select(x => new IssueResponse(x.Id, x.Project.Key + "-" + x.Number, x.Title, x.Description, x.Status.ToString(), x.Priority.ToString(), x.Type.ToString(), x.StoryPoints, x.Assignee == null ? null : new UserSummary(x.Assignee.Id, x.Assignee.Name, x.Assignee.Avatar), x.UpdatedAt)).ToListAsync(ct));
+        return Ok(await query.OrderByDescending(x => x.UpdatedAt).Select(x => new IssueResponse(x.Id, x.Project.Key + "-" + x.Number, x.Title, x.Description, x.Status.ToString(), x.Priority.ToString(), x.Type.ToString(), x.StoryPoints, x.SprintId, x.Assignee == null ? null : new UserSummary(x.Assignee.Id, x.Assignee.Name, x.Assignee.Avatar), x.UpdatedAt)).ToListAsync(ct));
     }
 
     [HttpGet("{id:int}")]
@@ -29,7 +29,7 @@ public sealed class IssuesController(JiraDbContext db, IssueApplicationService s
         if (issue is null) return NotFound();
         return Ok(new IssueDetailsResponse(
             issue.Id, issue.Project.Key + "-" + issue.Number, issue.Title, issue.Description,
-            issue.Status.ToString(), issue.Priority.ToString(), issue.Type.ToString(), issue.StoryPoints,
+            issue.Status.ToString(), issue.Priority.ToString(), issue.Type.ToString(), issue.StoryPoints, issue.SprintId,
             issue.Assignee == null ? null : new UserSummary(issue.Assignee.Id, issue.Assignee.Name, issue.Assignee.Avatar),
             issue.UpdatedAt,
             issue.Comments.OrderBy(x => x.CreatedAt).Select(x => new CommentResponse(x.Id, x.Body, x.Author.Name, x.Author.Avatar, x.CreatedAt)).ToList(),
@@ -68,8 +68,8 @@ public sealed class IssuesController(JiraDbContext db, IssueApplicationService s
     }
 }
 
-public sealed record IssueResponse(int Id, string Key, string Title, string Description, string Status, string Priority, string Type, int StoryPoints, UserSummary? Assignee, DateTime UpdatedAt);
-public sealed record IssueDetailsResponse(int Id, string Key, string Title, string Description, string Status, string Priority, string Type, int StoryPoints, UserSummary? Assignee, DateTime UpdatedAt, IReadOnlyList<CommentResponse> Comments, IReadOnlyList<ActivityResponse> Activities);
+public sealed record IssueResponse(int Id, string Key, string Title, string Description, string Status, string Priority, string Type, int StoryPoints, int? SprintId, UserSummary? Assignee, DateTime UpdatedAt);
+public sealed record IssueDetailsResponse(int Id, string Key, string Title, string Description, string Status, string Priority, string Type, int StoryPoints, int? SprintId, UserSummary? Assignee, DateTime UpdatedAt, IReadOnlyList<CommentResponse> Comments, IReadOnlyList<ActivityResponse> Activities);
 public sealed record UserSummary(int Id, string Name, string Avatar);
 public sealed record CommentResponse(int Id, string Body, string Author, string Avatar, DateTime CreatedAt);
 public sealed record ActivityResponse(int Id, string Type, string? OldValue, string? NewValue, string Actor, string Avatar, DateTime CreatedAt);
