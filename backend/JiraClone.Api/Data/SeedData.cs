@@ -8,8 +8,20 @@ public static class SeedData
 {
     public static async Task InitializeAsync(JiraDbContext db)
     {
-        if (await db.Projects.AnyAsync()) return;
         var hasher = new PasswordHasher<User>();
+        var existingUsers = await db.Users.OrderBy(x => x.Id).ToListAsync();
+        if (existingUsers.Count > 0)
+        {
+            var changed = false;
+            foreach (var user in existingUsers)
+            {
+                if (user.PasswordHash == "demo123") { user.PasswordHash = hasher.HashPassword(user, "demo123"); changed = true; }
+                if (string.IsNullOrWhiteSpace(user.Role)) { user.Role = user.Id == existingUsers[0].Id ? "Admin" : "User"; changed = true; }
+            }
+            if (changed) await db.SaveChangesAsync();
+        }
+        if (await db.Projects.AnyAsync()) return;
+
         var users = new[]
         {
             new User { Name = "Darshan", Email = "darshan@example.com", Avatar = "DB", Role = "Admin" },
