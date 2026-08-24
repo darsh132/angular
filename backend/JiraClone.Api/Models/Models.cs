@@ -1,0 +1,11 @@
+namespace JiraClone.Api.Models;
+
+public enum IssueStatus { Backlog, Todo, InProgress, InReview, Done }
+public enum IssuePriority { Lowest, Low, Medium, High, Highest }
+public enum IssueType { Story, Task, Bug, Epic }
+
+public sealed class User { public int Id { get; set; } public string Name { get; set; } = ""; public string Email { get; set; } = ""; public string Avatar { get; set; } = ""; }
+public sealed class Project { public int Id { get; set; } public string Key { get; set; } = ""; public string Name { get; set; } = ""; public string Description { get; set; } = ""; public ICollection<Issue> Issues { get; set; } = []; }
+public sealed class Sprint { public int Id { get; set; } public string Name { get; set; } = ""; public DateTime StartDate { get; set; } public DateTime EndDate { get; set; } public ICollection<Issue> Issues { get; set; } = []; }
+public sealed class Issue { public int Id { get; set; } public int Number { get; set; } public string Title { get; set; } = ""; public string Description { get; set; } = ""; public IssueStatus Status { get; set; } public IssuePriority Priority { get; set; } public IssueType Type { get; set; } public int ProjectId { get; set; } public Project Project { get; set; } = null!; public int? AssigneeId { get; set; } public User? Assignee { get; set; } public int? SprintId { get; set; } public Sprint? Sprint { get; set; } public DateTime CreatedAt { get; set; } public DateTime UpdatedAt { get; set; } public ICollection<IssueComment> Comments { get; set; } = []; }
+public sealed class IssueComment { public int Id { get; set; } public int IssueId { get; set; } public Issue Issue { get; set; } = null!; public int AuthorId { get; set; } public User Author { get; set; } = null!; public string Body { get; set; } = ""; public DateTime CreatedAt { get; set; } }
