@@ -1,0 +1,1 @@
+Implementation status: standalone issue editor page, reusable form component, route, API integration, and frontend component tests are present on feature/issue-editor. The existing issue-detail file is intentionally untouched because GitHub contents updates for that path have returned inconsistent SHA conflicts. The editor is therefore exposed as /issues/:id/edit.
