@@ -29,13 +29,39 @@ public sealed class IssueApplicationService(JiraDbContext db)
         return issue;
     }
 
+    public async Task UpdateAsync(int id, UpdateIssueCommand command, CancellationToken ct)
+    {
+        if (string.IsNullOrWhiteSpace(command.Title)) throw new ArgumentException("Issue title is required.", nameof(command));
+        if (command.StoryPoints < 0) throw new ArgumentOutOfRangeException(nameof(command.StoryPoints));
+        var issue = await db.Issues.FirstOrDefaultAsync(x => x.Id == id, ct) ?? throw new KeyNotFoundException("Issue not found.");
+        if (command.AssigneeId is not null && !await db.Users.AnyAsync(x => x.Id == command.AssigneeId, ct)) throw new KeyNotFoundException("Assignee not found.");
+        if (command.SprintId is not null)
+        {
+            var sprint = await db.Sprints.FirstOrDefaultAsync(x => x.Id == command.SprintId, ct) ?? throw new KeyNotFoundException("Sprint not found.");
+            if (sprint.ProjectId != issue.ProjectId) throw new InvalidOperationException("Issue and sprint must belong to the same project.");
+            if (sprint.Status == SprintStatus.Completed) throw new InvalidOperationException("A completed sprint cannot receive issues.");
+        }
+        var now = DateTime.UtcNow;
+        var oldPriority = issue.Priority;
+        var oldAssignee = issue.AssigneeId;
+        issue.Title = command.Title.Trim(); issue.Description = command.Description?.Trim() ?? string.Empty;
+        issue.Priority = command.Priority; issue.Type = command.Type; issue.StoryPoints = command.StoryPoints;
+        issue.AssigneeId = command.AssigneeId; issue.SprintId = command.SprintId; issue.UpdatedAt = now;
+        var actor = await db.Users.OrderBy(x => x.Id).FirstOrDefaultAsync(ct);
+        if (actor is not null)
+        {
+            if (oldPriority != issue.Priority) db.IssueActivities.Add(new IssueActivity { IssueId = id, ActorId = actor.Id, Type = IssueActivityType.PriorityChanged, OldValue = oldPriority.ToString(), NewValue = issue.Priority.ToString(), CreatedAt = now });
+            if (oldAssignee != issue.AssigneeId) db.IssueActivities.Add(new IssueActivity { IssueId = id, ActorId = actor.Id, Type = IssueActivityType.AssigneeChanged, OldValue = oldAssignee?.ToString(), NewValue = issue.AssigneeId?.ToString(), CreatedAt = now });
+            db.IssueActivities.Add(new IssueActivity { IssueId = id, ActorId = actor.Id, Type = IssueActivityType.Updated, NewValue = "Issue details updated", CreatedAt = now });
+        }
+        await db.SaveChangesAsync(ct);
+    }
+
     public async Task MoveAsync(int id, IssueStatus target, CancellationToken ct)
     {
         var issue = await db.Issues.FirstOrDefaultAsync(x => x.Id == id, ct) ?? throw new KeyNotFoundException("Issue not found.");
         IssueWorkflow.EnsureCanTransition(issue.Status, target);
-        var old = issue.Status;
-        issue.Status = target;
-        issue.UpdatedAt = DateTime.UtcNow;
+        var old = issue.Status; issue.Status = target; issue.UpdatedAt = DateTime.UtcNow;
         var actor = await db.Users.OrderBy(x => x.Id).FirstOrDefaultAsync(ct);
         if (actor is not null) db.IssueActivities.Add(new IssueActivity { IssueId = issue.Id, ActorId = actor.Id, Type = IssueActivityType.StatusChanged, OldValue = old.ToString(), NewValue = target.ToString(), CreatedAt = issue.UpdatedAt });
         await db.SaveChangesAsync(ct);
@@ -43,3 +69,4 @@ public sealed class IssueApplicationService(JiraDbContext db)
 }
 
 public sealed record CreateIssueCommand(int ProjectId, string Title, string? Description, IssueStatus Status, IssuePriority Priority, IssueType Type, int? AssigneeId = null, int? SprintId = null, int StoryPoints = 0);
+public sealed record UpdateIssueCommand(string Title, string? Description, IssuePriority Priority, IssueType Type, int StoryPoints, int? AssigneeId, int? SprintId);
