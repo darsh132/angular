@@ -1,0 +1,1 @@
+The edit experience is intentionally available at /issues/:id/edit until the existing issue-detail component can be safely updated through the repository contents API.
