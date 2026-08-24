@@ -1,9 +1,10 @@
 import { Component, OnInit, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
+import { RouterLink } from '@angular/router';
 import { JiraApiService, Issue, Project, Sprint, SprintStatus } from '../../core/jira-api.service';
 
-@Component({ selector: 'app-sprints', standalone: true, imports: [CommonModule, FormsModule], templateUrl: './sprints.component.html' })
+@Component({ selector: 'app-sprints', standalone: true, imports: [CommonModule, FormsModule, RouterLink], templateUrl: './sprints.component.html' })
 export class SprintsComponent implements OnInit {
   private readonly api = inject(JiraApiService);
   readonly projects = signal<Project[]>([]);
