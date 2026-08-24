@@ -1,0 +1,1 @@
+Issue editor feature branch is ready for review. The branch contains a standalone editor component/page, route, typed API integration, documentation, and frontend component tests. The existing issue-detail component remains unchanged due to a repository contents API SHA conflict; integration into that view is tracked as follow-up work.
