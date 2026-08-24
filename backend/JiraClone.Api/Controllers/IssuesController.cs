@@ -10,10 +10,15 @@ namespace JiraClone.Api.Controllers;
 public sealed class IssuesController(JiraDbContext db, IssueApplicationService service) : ControllerBase
 {
     [HttpGet]
-    public async Task<IActionResult> Get([FromQuery] string? status, [FromQuery] string? search, CancellationToken ct)
+    public async Task<IActionResult> Get([FromQuery] int? projectId, [FromQuery] int? sprintId, [FromQuery] int? assigneeId, [FromQuery] IssueStatus? status, [FromQuery] IssuePriority? priority, [FromQuery] IssueType? type, [FromQuery] string? search, CancellationToken ct)
     {
         var query = db.Issues.AsNoTracking().Include(x => x.Assignee).Include(x => x.Project).AsQueryable();
-        if (Enum.TryParse<IssueStatus>(status, true, out var parsedStatus)) query = query.Where(x => x.Status == parsedStatus);
+        if (projectId is not null) query = query.Where(x => x.ProjectId == projectId);
+        if (sprintId is not null) query = query.Where(x => x.SprintId == sprintId);
+        if (assigneeId is not null) query = query.Where(x => x.AssigneeId == assigneeId);
+        if (status is not null) query = query.Where(x => x.Status == status);
+        if (priority is not null) query = query.Where(x => x.Priority == priority);
+        if (type is not null) query = query.Where(x => x.Type == type);
         if (!string.IsNullOrWhiteSpace(search)) query = query.Where(x => x.Title.Contains(search) || x.Description.Contains(search) || (x.Project.Key + "-" + x.Number).Contains(search));
         return Ok(await query.OrderByDescending(x => x.UpdatedAt).Select(x => new IssueResponse(x.Id, x.Project.Key + "-" + x.Number, x.Title, x.Description, x.Status.ToString(), x.Priority.ToString(), x.Type.ToString(), x.StoryPoints, x.SprintId, x.Assignee == null ? null : new UserSummary(x.Assignee.Id, x.Assignee.Name, x.Assignee.Avatar), x.UpdatedAt)).ToListAsync(ct));
     }
@@ -27,22 +32,11 @@ public sealed class IssuesController(JiraDbContext db, IssueApplicationService s
     }
 
     [HttpPost]
-    public async Task<IActionResult> Create(CreateIssueRequest request, CancellationToken ct)
-    {
-        var issue = await service.CreateAsync(new CreateIssueCommand(request.ProjectId, request.Title, request.Description, request.Status, request.Priority, request.Type, request.AssigneeId, request.SprintId, request.StoryPoints), ct);
-        return Created($"/api/issues/{issue.Id}", issue.Id);
-    }
-
+    public async Task<IActionResult> Create(CreateIssueRequest request, CancellationToken ct) { var issue = await service.CreateAsync(new CreateIssueCommand(request.ProjectId, request.Title, request.Description, request.Status, request.Priority, request.Type, request.AssigneeId, request.SprintId, request.StoryPoints), ct); return Created($"/api/issues/{issue.Id}", issue.Id); }
     [HttpPut("{id:int}")]
-    public async Task<IActionResult> Update(int id, UpdateIssueRequest request, CancellationToken ct)
-    {
-        await service.UpdateAsync(id, new UpdateIssueCommand(request.Title, request.Description, request.Priority, request.Type, request.StoryPoints, request.AssigneeId, request.SprintId), ct);
-        return NoContent();
-    }
-
+    public async Task<IActionResult> Update(int id, UpdateIssueRequest request, CancellationToken ct) { await service.UpdateAsync(id, new UpdateIssueCommand(request.Title, request.Description, request.Priority, request.Type, request.StoryPoints, request.AssigneeId, request.SprintId), ct); return NoContent(); }
     [HttpPatch("{id:int}/status")]
     public async Task<IActionResult> UpdateStatus(int id, UpdateStatusRequest request, CancellationToken ct) { await service.MoveAsync(id, request.Status, ct); return NoContent(); }
-
     [HttpPost("{id:int}/comments")]
     public async Task<IActionResult> AddComment(int id, CreateCommentRequest request, CancellationToken ct)
     {
@@ -50,8 +44,8 @@ public sealed class IssuesController(JiraDbContext db, IssueApplicationService s
         if (!await db.Issues.AnyAsync(x => x.Id == id, ct)) return NotFound();
         var author = await db.Users.OrderBy(x => x.Id).FirstOrDefaultAsync(ct); if (author is null) return BadRequest(new { message = "No user exists." });
         var now = DateTime.UtcNow; var comment = new IssueComment { IssueId = id, AuthorId = author.Id, Body = request.Body.Trim(), CreatedAt = now };
-        db.IssueComments.Add(comment); db.IssueActivities.Add(new IssueActivity { IssueId = id, ActorId = author.Id, Type = IssueActivityType.CommentAdded, NewValue = "Comment added", CreatedAt = now });
-        await db.SaveChangesAsync(ct); return Created($"/api/issues/{id}", comment.Id);
+        db.IssueComments.Add(comment); db.IssueActivities.Add(new IssueActivity { IssueId = id, ActorId = author.Id, Type = IssueActivityType.CommentAdded, NewValue = "Comment added", CreatedAt = now }); await db.SaveChangesAsync(ct);
+        return Created($"/api/issues/{id}", comment.Id);
     }
 }
 
