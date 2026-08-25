@@ -5,8 +5,10 @@ using Microsoft.AspNetCore.Mvc;
 namespace JiraClone.Api.Controllers;
 
 [ApiController, Route("api/[controller]")]
-public sealed class AuthController(AuthService auth) : ControllerBase
+public sealed class AuthController(AuthService auth, IConfiguration configuration) : ControllerBase
 {
+    private const string RefreshCookie = "jira_refresh";
+
     [AllowAnonymous]
     [HttpPost("login")]
     public async Task<ActionResult<LoginResponse>> Login(LoginRequest request, CancellationToken ct)
@@ -14,37 +16,40 @@ public sealed class AuthController(AuthService auth) : ControllerBase
         if (string.IsNullOrWhiteSpace(request.Email) || string.IsNullOrWhiteSpace(request.Password))
             return BadRequest(new { message = "Email and password are required." });
         var result = await auth.AuthenticateAsync(request.Email, request.Password, ct);
-        return result is null ? Unauthorized(new { message = "Invalid credentials." }) : Ok(new LoginResponse(result.Token, result.RefreshToken, result.User));
+        if (result is null) return Unauthorized(new { message = "Invalid credentials." });
+        SetRefreshCookie(result.RefreshToken);
+        return Ok(new LoginResponse(result.Token, result.User));
     }
 
     [AllowAnonymous]
     [HttpPost("refresh")]
-    public async Task<ActionResult<LoginResponse>> Refresh(RefreshRequest request, CancellationToken ct)
+    public async Task<ActionResult<LoginResponse>> Refresh(CancellationToken ct)
     {
-        if (string.IsNullOrWhiteSpace(request.RefreshToken)) return BadRequest(new { message = "Refresh token is required." });
-        var result = await auth.RefreshAsync(request.RefreshToken, ct);
-        return result is null ? Unauthorized(new { message = "Invalid or expired refresh token." }) : Ok(new LoginResponse(result.Token, result.RefreshToken, result.User));
+        if (!Request.Cookies.TryGetValue(RefreshCookie, out var refreshToken) || string.IsNullOrWhiteSpace(refreshToken))
+            return Unauthorized(new { message = "Refresh token is missing." });
+        var result = await auth.RefreshAsync(refreshToken, ct);
+        if (result is null) { Response.Cookies.Delete(RefreshCookie, CookieOptions()); return Unauthorized(new { message = "Invalid or expired refresh token." }); }
+        SetRefreshCookie(result.RefreshToken);
+        return Ok(new LoginResponse(result.Token, result.User));
     }
 
     [AllowAnonymous]
     [HttpPost("revoke")]
-    public async Task<IActionResult> Revoke(RefreshRequest request, CancellationToken ct)
+    public async Task<IActionResult> Revoke(CancellationToken ct)
     {
-        if (string.IsNullOrWhiteSpace(request.RefreshToken)) return BadRequest(new { message = "Refresh token is required." });
-        await auth.RevokeAsync(request.RefreshToken, ct);
+        if (Request.Cookies.TryGetValue(RefreshCookie, out var refreshToken) && !string.IsNullOrWhiteSpace(refreshToken)) await auth.RevokeAsync(refreshToken, ct);
+        Response.Cookies.Delete(RefreshCookie, CookieOptions());
         return NoContent();
     }
 
     [Authorize]
     [HttpGet("me")]
     public ActionResult<AuthUser> Me() => Ok(new AuthUser(
-        int.Parse(User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)!.Value),
-        User.Identity?.Name ?? "",
-        User.FindFirst(System.Security.Claims.ClaimTypes.Email)?.Value ?? "",
-        "",
-        User.FindFirst(System.Security.Claims.ClaimTypes.Role)?.Value ?? "User"));
+        int.Parse(User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)!.Value), User.Identity?.Name ?? "", User.FindFirst(System.Security.Claims.ClaimTypes.Email)?.Value ?? "", "", User.FindFirst(System.Security.Claims.ClaimTypes.Role)?.Value ?? "User"));
+
+    private void SetRefreshCookie(string token) => Response.Cookies.Append(RefreshCookie, token, CookieOptions());
+    private CookieOptions CookieOptions() => new() { HttpOnly = true, Secure = true, SameSite = SameSiteMode.Strict, IsEssential = true, Expires = DateTimeOffset.UtcNow.AddDays(Math.Clamp(configuration.GetValue("Jwt:RefreshTokenDays", 30), 1, 90)), Path = "/api/auth" };
 }
 
 public sealed record LoginRequest(string Email, string Password);
-public sealed record RefreshRequest(string RefreshToken);
-public sealed record LoginResponse(string Token, string RefreshToken, AuthUser User);
+public sealed record LoginResponse(string Token, AuthUser User);
