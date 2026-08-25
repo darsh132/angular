@@ -6,19 +6,16 @@
       <a routerLink="/board" routerLinkActive="btn-active" class="btn btn-ghost justify-start w-full">▤ Board</a>
       <a routerLink="/backlog" routerLinkActive="btn-active" class="btn btn-ghost justify-start w-full">☷ Backlog</a>
       <a routerLink="/sprints" routerLinkActive="btn-active" class="btn btn-ghost justify-start w-full">◷ Sprints</a>
+      @if (auth.user()?.role === 'Admin') { <a routerLink="/members" routerLinkActive="btn-active" class="btn btn-ghost justify-start w-full">♙ Members</a> }
     </nav>
     <div class="p-3 border-t border-base-300"><button class="btn btn-ghost justify-start w-full text-error" (click)="auth.logout()">↪ Sign out</button></div>
   </aside>
-
   <div class="flex-1 min-w-0">
     <header class="navbar bg-base-100 border-b border-base-300 px-4 lg:px-8 sticky top-0 z-20">
       <div class="flex-1"><div class="lg:hidden text-lg font-black">JIRA<span class="text-primary">Clone</span></div><div class="hidden lg:block"><span class="text-sm text-base-content/50">Project</span><div class="font-semibold">JIRA Clone · Software Development</div></div></div>
-      <div class="flex-none gap-2">
-        <select class="select select-sm select-bordered" (change)="theme($any($event.target).value)"><option value="corporate">Corporate</option><option value="night">Night</option><option value="forest">Forest</option></select>
-        <div class="dropdown dropdown-end"><button class="btn btn-ghost btn-sm"><div class="avatar placeholder"><div class="bg-primary text-primary-content w-8 rounded-full"><span>{{ auth.user()?.name?.slice(0,2)?.toUpperCase() ?? 'DU' }}</span></div></div><span class="hidden md:inline">{{ auth.user()?.name }}</span></button><div class="dropdown-content z-30 menu p-2 shadow bg-base-100 rounded-box w-48"><li><button (click)="auth.logout()">Sign out</button></li></div></div>
-      </div>
+      <div class="flex-none gap-2"><select class="select select-sm select-bordered" (change)="theme($any($event.target).value)"><option value="corporate">Corporate</option><option value="night">Night</option><option value="forest">Forest</option></select><div class="dropdown dropdown-end"><button class="btn btn-ghost btn-sm"><div class="avatar placeholder"><div class="bg-primary text-primary-content w-8 rounded-full"><span>{{ auth.user()?.name?.slice(0,2)?.toUpperCase() ?? 'DU' }}</span></div></div><span class="hidden md:inline">{{ auth.user()?.name }}</span></button><div class="dropdown-content z-30 menu p-2 shadow bg-base-100 rounded-box w-48"><li><button (click)="auth.logout()">Sign out</button></li></div></div></div>
     </header>
-    <div class="lg:hidden flex gap-1 overflow-x-auto p-2 bg-base-100 border-b border-base-300"><a routerLink="/dashboard" class="btn btn-xs btn-ghost">Dashboard</a><a routerLink="/board" class="btn btn-xs btn-ghost">Board</a><a routerLink="/backlog" class="btn btn-xs btn-ghost">Backlog</a><a routerLink="/sprints" class="btn btn-xs btn-ghost">Sprints</a></div>
+    <div class="lg:hidden flex gap-1 overflow-x-auto p-2 bg-base-100 border-b border-base-300"><a routerLink="/dashboard" class="btn btn-xs btn-ghost">Dashboard</a><a routerLink="/board" class="btn btn-xs btn-ghost">Board</a><a routerLink="/backlog" class="btn btn-xs btn-ghost">Backlog</a><a routerLink="/sprints" class="btn btn-xs btn-ghost">Sprints</a>@if (auth.user()?.role === 'Admin') { <a routerLink="/members" class="btn btn-xs btn-ghost">Members</a> }</div>
     <main><router-outlet /></main>
   </div>
 </div>
