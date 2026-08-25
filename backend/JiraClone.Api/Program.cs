@@ -19,3 +19,5 @@ var app = builder.Build();
 app.UseExceptionHandler(errorApp => errorApp.Run(async context => { var exception = context.Features.Get<IExceptionHandlerFeature>()?.Error; var (status, title) = exception switch { KeyNotFoundException => (404, "Resource not found"), ArgumentException => (400, "Invalid request"), UnauthorizedAccessException => (403, "Forbidden"), InvalidOperationException => (409, "Operation not allowed"), DbUpdateException => (409, "Database constraint violation"), _ => (500, "Unexpected server error") }; await Results.Problem(statusCode: status, title: title, detail: app.Environment.IsDevelopment() ? exception?.Message : null).ExecuteAsync(context); }));
 using (var scope = app.Services.CreateScope()) { var db = scope.ServiceProvider.GetRequiredService<JiraDbContext>(); await db.Database.MigrateAsync(); await SeedData.InitializeAsync(db); }
 if (app.Environment.IsDevelopment()) { app.UseSwagger(); app.UseSwaggerUI(); } app.UseCors("frontend"); app.UseAuthentication(); app.UseAuthorization(); app.MapControllers(); app.Run();
+
+public partial class Program { }
