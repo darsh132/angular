@@ -1,6 +1,7 @@
 import { Injectable, inject } from '@angular/core';
 import { HttpClient, HttpParams } from '@angular/common/http';
 import { Observable } from 'rxjs';
+import { ProjectMember } from './permission.models';
 
 export type IssueStatus = 'Backlog' | 'Todo' | 'InProgress' | 'InReview' | 'Done';
 export type IssuePriority = 'Lowest' | 'Low' | 'Medium' | 'High' | 'Highest';
@@ -23,4 +24,7 @@ export class JiraApiService {
   issue(id:number):Observable<IssueDetails>{return this.http.get<IssueDetails>(`${this.baseUrl}/issues/${id}`);} move(id:number,status:IssueStatus):Observable<void>{return this.http.patch<void>(`${this.baseUrl}/issues/${id}/status`,{status});}
   create(request:CreateIssueRequest):Observable<number>{return this.http.post<number>(`${this.baseUrl}/issues`,request);} update(id:number,request:UpdateIssueRequest):Observable<void>{return this.http.put<void>(`${this.baseUrl}/issues/${id}`,request);} comment(id:number,body:string):Observable<number>{return this.http.post<number>(`${this.baseUrl}/issues/${id}/comments`,{body});}
   sprints(projectId:number):Observable<Sprint[]>{return this.http.get<Sprint[]>(`${this.baseUrl}/projects/${projectId}/sprints`);} createSprint(projectId:number,r:CreateSprintRequest):Observable<Sprint>{return this.http.post<Sprint>(`${this.baseUrl}/projects/${projectId}/sprints`,r);} startSprint(projectId:number,sprintId:number):Observable<Sprint>{return this.http.post<Sprint>(`${this.baseUrl}/projects/${projectId}/sprints/${sprintId}/start`,{});} completeSprint(projectId:number,sprintId:number):Observable<Sprint>{return this.http.post<Sprint>(`${this.baseUrl}/projects/${projectId}/sprints/${sprintId}/complete`,{});} assignIssueToSprint(projectId:number,sprintId:number,issueId:number):Observable<void>{return this.http.post<void>(`${this.baseUrl}/projects/${projectId}/sprints/${sprintId}/issues/${issueId}`,{});} removeIssueFromSprint(projectId:number,issueId:number):Observable<void>{return this.http.delete<void>(`${this.baseUrl}/projects/${projectId}/sprints/issues/${issueId}`);}
+  projectMembers(projectId:number):Observable<ProjectMember[]> { return this.http.get<ProjectMember[]>(`${this.baseUrl}/projects/${projectId}/members`); }
+  upsertProjectMember(projectId:number,userId:number,role:ProjectMember['role']):Observable<void> { return this.http.put<void>(`${this.baseUrl}/projects/${projectId}/members/${userId}`,{role}); }
+  removeProjectMember(projectId:number,userId:number):Observable<void> { return this.http.delete<void>(`${this.baseUrl}/projects/${projectId}/members/${userId}`); }
 }
