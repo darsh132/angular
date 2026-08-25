@@ -4,8 +4,9 @@ import { FormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
 import { JiraApiService, Issue, Project, Sprint, SprintStatus } from '../../core/jira-api.service';
 import { PermissionService } from '../../core/permission.service';
+import { SprintAnalyticsComponent } from './sprint-analytics.component';
 
-@Component({ selector: 'app-sprints', standalone: true, imports: [CommonModule, FormsModule, RouterLink], templateUrl: './sprints.component.html' })
+@Component({ selector: 'app-sprints', standalone: true, imports: [CommonModule, FormsModule, RouterLink, SprintAnalyticsComponent], templateUrl: './sprints.component.html' })
 export class SprintsComponent implements OnInit {
   private readonly api = inject(JiraApiService); readonly permissions = inject(PermissionService);
   readonly projects = signal<Project[]>([]); readonly sprints = signal<Sprint[]>([]); readonly issues = signal<Issue[]>([]); readonly loading = signal(true); readonly saving = signal(false); readonly action = signal<number | null>(null);
