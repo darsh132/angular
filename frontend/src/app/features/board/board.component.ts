@@ -1,21 +1,21 @@
 import { Component, OnInit, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
+import { ActivatedRoute, Router } from '@angular/router';
 import { CdkDragDrop, DragDropModule } from '@angular/cdk/drag-drop';
 import { JiraApiService, Issue, IssueFilters, IssuePriority, IssueStatus, IssueType } from '../../core/jira-api.service';
 import { IssueFilterBarComponent } from './issue-filter-bar.component';
 
 @Component({ selector: 'app-board', standalone: true, imports: [CommonModule, FormsModule, DragDropModule, IssueFilterBarComponent], templateUrl: './board.component.html' })
 export class BoardComponent implements OnInit {
-  private readonly api = inject(JiraApiService);
+  private readonly api = inject(JiraApiService); private readonly route = inject(ActivatedRoute); private readonly router = inject(Router);
   readonly issues = signal<Issue[]>([]); readonly filters = signal<IssueFilters>({});
-  readonly statuses: IssueStatus[] = ['Backlog', 'Todo', 'InProgress', 'InReview', 'Done'];
-  readonly priorities: IssuePriority[] = ['Lowest', 'Low', 'Medium', 'High', 'Highest']; readonly types: IssueType[] = ['Story', 'Task', 'Bug', 'Epic'];
+  readonly statuses: IssueStatus[] = ['Backlog', 'Todo', 'InProgress', 'InReview', 'Done']; readonly priorities: IssuePriority[] = ['Lowest', 'Low', 'Medium', 'High', 'Highest']; readonly types: IssueType[] = ['Story', 'Task', 'Bug', 'Epic'];
   readonly loading = signal(true); readonly moving = signal<number | null>(null); readonly createOpen = signal(false); readonly saving = signal(false);
   newIssue = { projectId: 1, title: '', description: '', status: 'Todo' as IssueStatus, priority: 'Medium' as IssuePriority, type: 'Task' as IssueType, storyPoints: 0 };
-  ngOnInit(): void { this.load(); }
+  ngOnInit(): void { this.route.queryParamMap.subscribe(params => { const f: IssueFilters = {}; const projectId = Number(params.get('projectId')); const sprintId = Number(params.get('sprintId')); const assigneeId = Number(params.get('assigneeId')); const status = params.get('status') as IssueStatus | null; const priority = params.get('priority') as IssuePriority | null; const type = params.get('type') as IssueType | null; const search = params.get('search'); if (projectId) f.projectId = projectId; if (sprintId) f.sprintId = sprintId; if (assigneeId) f.assigneeId = assigneeId; if (status && this.statuses.includes(status)) f.status = status; if (priority && this.priorities.includes(priority)) f.priority = priority; if (type && this.types.includes(type)) f.type = type; if (search) f.search = search; this.filters.set(f); this.load(); }); }
   load(): void { this.loading.set(true); this.api.issues(this.filters()).subscribe({ next: x => this.issues.set(x), error: e => console.error(e), complete: () => this.loading.set(false) }); }
-  setFilters(filters: IssueFilters): void { this.filters.set(filters); this.load(); }
+  setFilters(filters: IssueFilters): void { this.filters.set(filters); void this.router.navigate([], { relativeTo: this.route, queryParams: filters, queryParamsHandling: '', replaceUrl: true }); }
   byStatus(status: IssueStatus): Issue[] { return this.issues().filter(i => i.status === status); }
   drop(event: CdkDragDrop<Issue[]>, target: IssueStatus): void { const issue = event.item.data as Issue; if (!issue || issue.status === target || this.moving()) return; this.persistMove(issue, target); }
   move(issue: Issue, status: IssueStatus): void { if (issue.status === status || this.moving()) return; this.persistMove(issue, status); }
