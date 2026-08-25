@@ -14,9 +14,25 @@ public sealed class AuthController(AuthService auth) : ControllerBase
         if (string.IsNullOrWhiteSpace(request.Email) || string.IsNullOrWhiteSpace(request.Password))
             return BadRequest(new { message = "Email and password are required." });
         var result = await auth.AuthenticateAsync(request.Email, request.Password, ct);
-        return result is null
-            ? Unauthorized(new { message = "Invalid credentials." })
-            : Ok(new LoginResponse(result.Token, result.User));
+        return result is null ? Unauthorized(new { message = "Invalid credentials." }) : Ok(new LoginResponse(result.Token, result.RefreshToken, result.User));
+    }
+
+    [AllowAnonymous]
+    [HttpPost("refresh")]
+    public async Task<ActionResult<LoginResponse>> Refresh(RefreshRequest request, CancellationToken ct)
+    {
+        if (string.IsNullOrWhiteSpace(request.RefreshToken)) return BadRequest(new { message = "Refresh token is required." });
+        var result = await auth.RefreshAsync(request.RefreshToken, ct);
+        return result is null ? Unauthorized(new { message = "Invalid or expired refresh token." }) : Ok(new LoginResponse(result.Token, result.RefreshToken, result.User));
+    }
+
+    [AllowAnonymous]
+    [HttpPost("revoke")]
+    public async Task<IActionResult> Revoke(RefreshRequest request, CancellationToken ct)
+    {
+        if (string.IsNullOrWhiteSpace(request.RefreshToken)) return BadRequest(new { message = "Refresh token is required." });
+        await auth.RevokeAsync(request.RefreshToken, ct);
+        return NoContent();
     }
 
     [Authorize]
@@ -30,4 +46,5 @@ public sealed class AuthController(AuthService auth) : ControllerBase
 }
 
 public sealed record LoginRequest(string Email, string Password);
-public sealed record LoginResponse(string Token, AuthUser User);
+public sealed record RefreshRequest(string RefreshToken);
+public sealed record LoginResponse(string Token, string RefreshToken, AuthUser User);
