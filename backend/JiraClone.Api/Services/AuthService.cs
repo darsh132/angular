@@ -24,26 +24,41 @@ public sealed class AuthService(JiraDbContext db, IConfiguration configuration)
     public async Task<AuthResult?> RefreshAsync(string refreshToken, CancellationToken ct)
     {
         var hash = HashToken(refreshToken);
-        var stored = await db.RefreshTokens.Include(x => x.User).SingleOrDefaultAsync(x => x.TokenHash == hash, ct);
-        if (stored is null || stored.ExpiresAt <= DateTime.UtcNow) return null;
-
-        // Atomically claim the token so concurrent refresh requests cannot both rotate it.
-        var now = DateTime.UtcNow;
-        var claimed = await db.RefreshTokens
-            .Where(x => x.TokenHash == hash && x.RevokedAt == null && x.ExpiresAt > now)
-            .ExecuteUpdateAsync(setters => setters.SetProperty(x => x.RevokedAt, now), ct);
-
-        if (claimed == 0)
+        await using var transaction = await db.Database.BeginTransactionAsync(System.Data.IsolationLevel.Serializable, ct);
+        try
         {
-            // A previously rotated token was presented again: treat it as token-family compromise.
-            await RevokeTokenFamilyAsync(stored.UserId, now, ct);
-            return null;
-        }
+            var now = DateTime.UtcNow;
+            var stored = await db.RefreshTokens.Include(x => x.User).SingleOrDefaultAsync(x => x.TokenHash == hash, ct);
+            if (stored is null || stored.ExpiresAt <= now)
+            {
+                await transaction.RollbackAsync(ct);
+                return null;
+            }
 
-        var result = await CreateAuthResultAsync(stored.User, ct, persist: false);
-        stored.ReplacedByTokenHash = HashToken(result.RefreshToken);
-        await db.SaveChangesAsync(ct);
-        return result;
+            // The conditional update is the atomic claim. Exactly one transaction can claim a live token.
+            var claimed = await db.RefreshTokens
+                .Where(x => x.TokenHash == hash && x.RevokedAt == null && x.ExpiresAt > now)
+                .ExecuteUpdateAsync(setters => setters.SetProperty(x => x.RevokedAt, now), ct);
+
+            if (claimed == 0)
+            {
+                // A previously rotated token was presented again. Revoke all currently live tokens in the family.
+                await RevokeTokenFamilyAsync(stored.UserId, now, ct);
+                await transaction.CommitAsync(ct);
+                return null;
+            }
+
+            var result = await CreateAuthResultAsync(stored.User, ct, persist: false);
+            stored.ReplacedByTokenHash = HashToken(result.RefreshToken);
+            await db.SaveChangesAsync(ct);
+            await transaction.CommitAsync(ct);
+            return result;
+        }
+        catch
+        {
+            await transaction.RollbackAsync(CancellationToken.None);
+            throw;
+        }
     }
 
     public async Task<bool> RevokeAsync(string refreshToken, CancellationToken ct)
@@ -57,8 +72,7 @@ public sealed class AuthService(JiraDbContext db, IConfiguration configuration)
 
     private async Task RevokeTokenFamilyAsync(int userId, DateTime revokedAt, CancellationToken ct)
     {
-        await db.RefreshTokens
-            .Where(x => x.UserId == userId && x.RevokedAt == null)
+        await db.RefreshTokens.Where(x => x.UserId == userId && x.RevokedAt == null)
             .ExecuteUpdateAsync(setters => setters.SetProperty(x => x.RevokedAt, revokedAt), ct);
     }
 
