@@ -11,4 +11,5 @@ export class PermissionService {
   canView(role?: ProjectRole): boolean { return this.canManageGlobally() || role !== undefined; }
   canEdit(role?: ProjectRole): boolean { return this.canManageGlobally() || role === 'Member' || role === 'Manager'; }
   canManage(role?: ProjectRole): boolean { return this.canManageGlobally() || role === 'Manager'; }
+  currentUserId(): number | null { return this.auth.user()?.id ?? null; }
 }
