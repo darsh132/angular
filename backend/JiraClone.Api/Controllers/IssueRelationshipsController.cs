@@ -13,23 +13,15 @@ public sealed class IssueRelationshipsController(IssueRelationshipService servic
     [HttpPost]
     public async Task<ActionResult<IssueRelationship>> Create(int issueId, CreateRelationshipRequest request, CancellationToken ct)
     {
-        try
-        {
-            return Ok(await service.CreateAsync(issueId, request.TargetIssueId, request.Type, ct));
-        }
-        catch (KeyNotFoundException e) { return NotFound(new { message = e.Message }); }
-        catch (InvalidOperationException e) { return Conflict(new { message = e.Message }); }
+        var relationship = await service.CreateAsync(issueId, request.TargetIssueId, request.Type, ct);
+        return Ok(relationship);
     }
 
     [HttpDelete("{relationshipId:long}")]
     public async Task<IActionResult> Delete(long relationshipId, CancellationToken ct)
     {
-        try
-        {
-            await service.DeleteAsync(relationshipId, ct);
-            return NoContent();
-        }
-        catch (KeyNotFoundException e) { return NotFound(new { message = e.Message }); }
+        await service.DeleteAsync(relationshipId, ct);
+        return NoContent();
     }
 }
 
