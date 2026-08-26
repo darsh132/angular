@@ -5,7 +5,7 @@ using System.Security.Claims;
 
 namespace JiraClone.Api.Services;
 
-public sealed class IssueRelationshipService(JiraDbContext db, IHttpContextAccessor http)
+public sealed class IssueRelationshipService(JiraDbContext db, IHttpContextAccessor http, ProjectAuthorizationService authorization)
 {
     public async Task<IssueRelationship> CreateAsync(int sourceId, int targetId, IssueRelationshipType type, CancellationToken ct)
     {
@@ -13,6 +13,7 @@ public sealed class IssueRelationshipService(JiraDbContext db, IHttpContextAcces
         var source = await db.Issues.AsNoTracking().FirstOrDefaultAsync(x => x.Id == sourceId, ct) ?? throw new KeyNotFoundException("Source issue not found.");
         var target = await db.Issues.AsNoTracking().FirstOrDefaultAsync(x => x.Id == targetId, ct) ?? throw new KeyNotFoundException("Target issue not found.");
         if (source.ProjectId != target.ProjectId) throw new InvalidOperationException("Issues must belong to the same project.");
+        await authorization.EnsureCanEditAsync(source.ProjectId, ct);
 
         var symmetric = type is IssueRelationshipType.RelatesTo or IssueRelationshipType.Duplicates;
         var existing = symmetric
@@ -28,7 +29,8 @@ public sealed class IssueRelationshipService(JiraDbContext db, IHttpContextAcces
 
     public async Task DeleteAsync(long id, CancellationToken ct)
     {
-        var relationship = await db.IssueRelationships.FindAsync([id], ct) ?? throw new KeyNotFoundException("Relationship not found.");
+        var relationship = await db.IssueRelationships.Include(x => x.SourceIssue).FirstOrDefaultAsync(x => x.Id == id, ct) ?? throw new KeyNotFoundException("Relationship not found.");
+        await authorization.EnsureCanEditAsync(relationship.SourceIssue.ProjectId, ct);
         db.IssueRelationships.Remove(relationship); await db.SaveChangesAsync(ct);
     }
 }
